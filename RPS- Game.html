@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock, Paper, Scissors</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #2a0a3a 0%, #0a1f2a 100%);
+            color: #e0e0e0;
+        }
+        .container {
+            background-color: rgba(43, 43, 72, 0.5); /* Slightly transparent background */
+            backdrop-filter: blur(10px);
+            border: 2px solid #5a5a8c;
+        }
+        .btn {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.08);
+        }
+        .message-box {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .score-container {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .score-card {
+            padding: 1rem 2rem;
+            background-color: #3c3c63;
+            border-radius: 12px;
+            min-width: 120px;
+        }
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="container p-8 rounded-xl shadow-lg w-full max-w-lg text-center">
+        <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-6">Rock, Paper, Scissors</h1>
+
+        <div class="score-container">
+            <div class="score-card">
+                <p class="text-2xl font-bold" id="playerScore">0</p>
+                <p class="text-sm">Player</p>
+            </div>
+            <div class="score-card">
+                <p class="text-2xl font-bold" id="computerScore">0</p>
+                <p class="text-sm">Computer</p>
+            </div>
+        </div>
+
+        <div id="gameMessage" class="message-box bg-gray-700 p-4 rounded-lg text-white font-medium text-lg min-h-[5rem] flex items-center justify-center text-center mb-6">
+            Make your choice to start the game!
+        </div>
+
+        <div class="flex justify-center gap-4 md:gap-8 mb-6">
+            <button id="rock" class="btn bg-gradient-to-r from-blue-500 to-blue-700 text-white font-bold py-4 px-6 rounded-lg text-2xl">
+                🪨 Rock
+            </button>
+            <button id="paper" class="btn bg-gradient-to-r from-green-500 to-green-700 text-white font-bold py-4 px-6 rounded-lg text-2xl">
+                📄 Paper
+            </button>
+            <button id="scissors" class="btn bg-gradient-to-r from-red-500 to-red-700 text-white font-bold py-4 px-6 rounded-lg text-2xl">
+                ✂️ Scissors
+            </button>
+        </div>
+        
+        <button id="resetButton" class="btn bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg">
+            Reset Score
+        </button>
+
+    </div>
+    
+    <script>
+        // Game variables
+        let playerScore = 0;
+        let computerScore = 0;
+
+        // DOM elements
+        const rockBtn = document.getElementById('rock');
+        const paperBtn = document.getElementById('paper');
+        const scissorsBtn = document.getElementById('scissors');
+        const resetButton = document.getElementById('resetButton');
+        const gameMessageEl = document.getElementById('gameMessage');
+        const playerScoreEl = document.getElementById('playerScore');
+        const computerScoreEl = document.getElementById('computerScore');
+
+        // Functions
+        function playGame(playerChoice) {
+            const choices = ['rock', 'paper', 'scissors'];
+            const computerChoice = choices[Math.floor(Math.random() * choices.length)];
+
+            let result = '';
+
+            if (playerChoice === computerChoice) {
+                result = "It's a tie!";
+            } else if (
+                (playerChoice === 'rock' && computerChoice === 'scissors') ||
+                (playerChoice === 'paper' && computerChoice === 'rock') ||
+                (playerChoice === 'scissors' && computerChoice === 'paper')
+            ) {
+                result = "You win!";
+                playerScore++;
+            } else {
+                result = "You lose!";
+                computerScore++;
+            }
+            
+            updateScore();
+            showMessage(`You chose ${getChoiceIcon(playerChoice)}, Computer chose ${getChoiceIcon(computerChoice)}. ${result}`, result);
+        }
+        
+        function getChoiceIcon(choice) {
+            switch(choice) {
+                case 'rock':
+                    return '🪨';
+                case 'paper':
+                    return '📄';
+                case 'scissors':
+                    return '✂️';
+                default:
+                    return '';
+            }
+        }
+
+        function updateScore() {
+            playerScoreEl.textContent = playerScore;
+            computerScoreEl.textContent = computerScore;
+        }
+
+        function showMessage(message, result) {
+            gameMessageEl.textContent = message;
+            gameMessageEl.classList.remove('bg-gray-700', 'bg-green-700', 'bg-red-700');
+            
+            if (result === 'You win!') {
+                gameMessageEl.classList.add('bg-green-700');
+            } else if (result === 'You lose!') {
+                gameMessageEl.classList.add('bg-red-700');
+            } else {
+                gameMessageEl.classList.add('bg-gray-700');
+            }
+            
+            gameMessageEl.classList.remove('fadeIn');
+            void gameMessageEl.offsetWidth; // Trigger reflow to restart animation
+            gameMessageEl.classList.add('fadeIn');
+        }
+
+        function resetGame() {
+            playerScore = 0;
+            computerScore = 0;
+            updateScore();
+            showMessage("Score has been reset. Make your choice!", 'reset');
+        }
+
+        // Event Listeners
+        rockBtn.addEventListener('click', () => playGame('rock'));
+        paperBtn.addEventListener('click', () => playGame('paper'));
+        scissorsBtn.addEventListener('click', () => playGame('scissors'));
+        resetButton.addEventListener('click', resetGame);
+        
+    </script>

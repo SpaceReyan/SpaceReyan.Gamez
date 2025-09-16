@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Number</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f3e9;
+            color: #333;
+        }
+        .game-container {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .game-input {
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .game-input:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 5px rgba(96, 165, 250, 0.5);
+        }
+        .btn {
+            background-color: #3b82f6;
+            color: white;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .btn:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+        }
+        .feedback-message {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            transform-origin: top;
+            animation: fadeIn 0.5s forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="game-container p-8 rounded-xl w-full max-w-sm text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Guess the Number</h1>
+        <p class="text-sm mb-6 text-gray-600">I'm thinking of a number between 1 and 100.</p>
+
+        <div class="mb-6">
+            <input type="number" id="guessInput" class="game-input w-full p-3 rounded-md text-center text-lg font-bold" placeholder="Enter your guess">
+        </div>
+
+        <button id="checkBtn" class="btn w-full font-bold py-3 rounded-lg">
+            Check Guess
+        </button>
+        <button id="newGameBtn" class="btn w-full bg-gray-500 hover:bg-gray-600 font-bold py-3 mt-3 rounded-lg hidden">
+            New Game
+        </button>
+        <button id="hintBtn" class="btn w-full bg-yellow-500 hover:bg-yellow-600 font-bold py-3 mt-3 rounded-lg hidden">
+            Get a Hint
+        </button>
+
+        <div id="feedback" class="feedback-message mt-6 p-4 rounded-lg font-medium text-lg min-h-[4rem] flex items-center justify-center text-center">
+            
+        </div>
+        
+        <p id="guessCount" class="mt-4 text-sm text-gray-500">Guesses: 0</p>
+    </div>
+
+    <script>
+        // Game state variables
+        let randomNumber;
+        let guesses = 0;
+        let isGameOver = false;
+
+        // DOM elements
+        const guessInput = document.getElementById('guessInput');
+        const checkBtn = document.getElementById('checkBtn');
+        const newGameBtn = document.getElementById('newGameBtn');
+        const hintBtn = document.getElementById('hintBtn');
+        const feedbackEl = document.getElementById('feedback');
+        const guessCountEl = document.getElementById('guessCount');
+
+        // Function to start a new game
+        function startNewGame() {
+            randomNumber = Math.floor(Math.random() * 100) + 1;
+            guesses = 0;
+            isGameOver = false;
+
+            guessInput.value = '';
+            guessInput.disabled = false;
+            checkBtn.classList.remove('hidden');
+            newGameBtn.classList.add('hidden');
+            hintBtn.classList.add('hidden');
+            feedbackEl.textContent = 'Make your first guess!';
+            feedbackEl.classList.remove('bg-green-100', 'bg-red-100', 'bg-yellow-100');
+            feedbackEl.style.color = '#333';
+            feedbackEl.style.backgroundColor = '#f0f0f0';
+            guessCountEl.textContent = 'Guesses: 0';
+        }
+
+        // Function to handle a guess
+        function checkGuess() {
+            if (isGameOver) {
+                return;
+            }
+
+            const userGuess = parseInt(guessInput.value, 10);
+            
+            // Check for valid input
+            if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
+                showFeedback('Please enter a number between 1 and 100.', 'warning');
+                return;
+            }
+
+            guesses++;
+            guessCountEl.textContent = `Guesses: ${guesses}`;
+
+            if (userGuess === randomNumber) {
+                showFeedback(`Congratulations! You guessed the number in ${guesses} attempts!`, 'win');
+                endGame();
+            } else if (userGuess < randomNumber) {
+                showFeedback('Too low! Try a higher number.', 'low');
+            } else {
+                showFeedback('Too high! Try a lower number.', 'high');
+            }
+
+            // Show hint button after 3 guesses
+            if (guesses >= 3 && !hintBtn.classList.contains('hidden')) {
+                // Do nothing if already visible
+            } else if (guesses >= 3) {
+                 hintBtn.classList.remove('hidden');
+            }
+        }
+
+        // Function to display feedback message
+        function showFeedback(message, type) {
+            feedbackEl.textContent = message;
+            feedbackEl.classList.remove('bg-green-100', 'bg-red-100', 'bg-yellow-100');
+
+            if (type === 'win') {
+                feedbackEl.classList.add('bg-green-100');
+                feedbackEl.style.color = '#15803d';
+            } else if (type === 'low' || type === 'high') {
+                feedbackEl.classList.add('bg-red-100');
+                feedbackEl.style.color = '#b91c1c';
+            } else if (type === 'warning' || type === 'hint') {
+                feedbackEl.classList.add('bg-yellow-100');
+                feedbackEl.style.color = '#b45309';
+            }
+            
+            feedbackEl.classList.remove('fadeIn');
+            void feedbackEl.offsetWidth; // Trigger reflow
+            feedbackEl.classList.add('fadeIn');
+        }
+
+        // Function to handle hint request
+        function getHint() {
+            if (randomNumber % 2 === 0) {
+                showFeedback('Hint: The number is even.', 'hint');
+            } else {
+                showFeedback('Hint: The number is odd.', 'hint');
+            }
+            hintBtn.disabled = true;
+            hintBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Function to end the game
+        function endGame() {
+            isGameOver = true;
+            guessInput.disabled = true;
+            checkBtn.classList.add('hidden');
+            newGameBtn.classList.remove('hidden');
+            hintBtn.classList.add('hidden');
+        }
+
+        // Event listeners
+        checkBtn.addEventListener('click', checkGuess);
+        newGameBtn.addEventListener('click', startNewGame);
+        hintBtn.addEventListener('click', getHint);
+        guessInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                checkGuess();
+            }
+        });
+        
+        // Initial game setup
+        startNewGame();
+    </script>
+</body>
+</html>

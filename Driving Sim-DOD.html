@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driving Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'VT323', monospace;
+            background-color: #0d1a26;
+            color: #d4d4d4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .game-wrapper {
+            background-color: #2c3e50;
+            border: 2px solid #555;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            max-width: 450px;
+            width: 100%;
+        }
+        canvas {
+            display: block;
+            background: #44586c;
+            border: 2px solid #7f8c8d;
+            border-radius: 0.5rem;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+        #messageBox {
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        .road-lane {
+            background-color: #f1c40f;
+            animation: move-lanes 1.5s linear infinite;
+        }
+        @keyframes move-lanes {
+            from { transform: translateY(0); }
+            to { transform: translateY(40px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-wrapper flex flex-col items-center gap-6">
+        <h1 class="text-4xl font-bold text-center text-yellow-400 drop-shadow-lg">Drive and Dodge</h1>
+        <canvas id="gameCanvas" width="300" height="450"></canvas>
+        <div id="gameControls" class="flex flex-col gap-4 w-full">
+            <div id="gameStats" class="flex justify-between text-xl font-bold">
+                <p>Score: <span id="score">0</span></p>
+                <p>High Score: <span id="highScore">0</span></p>
+            </div>
+            <div id="gameUI" class="flex flex-col gap-4">
+                <button id="startGameBtn" class="btn w-full">Start Game</button>
+                <div id="messageBox" class="hidden text-center">
+                    <p id="messageText" class="text-lg"></p>
+                    <button id="restartGameBtn" class="btn mt-4 hidden">Restart</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const highScoreEl = document.getElementById('highScore');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const restartGameBtn = document.getElementById('restartGameBtn');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        
+        // Game variables
+        let animationFrameId;
+        let score = 0;
+        let highScore = localStorage.getItem('drivingHighScore') || 0;
+        let isGameOver = false;
+        let roadLaneY = 0;
+        
+        let player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 70,
+            width: 50,
+            height: 50,
+            speed: 5
+        };
+        let obstacles = [];
+        let obstacleSpeed = 3;
+        let lastObstacleTime = 0;
+        const obstacleSpawnInterval = 1000; // milliseconds
+        
+        // Update high score display
+        highScoreEl.textContent = highScore;
+
+        // Function to handle key presses
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Function to handle touch for mobile
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+            player.x = touchX - player.width / 2;
+        });
+
+        // Function to draw player
+        function drawPlayer() {
+            // Car body
+            ctx.fillStyle = '#3498db'; // Main blue
+            ctx.fillRect(player.x + 5, player.y, player.width - 10, player.height);
+
+            // Car roof/window
+            ctx.fillStyle = '#2c3e50'; // Dark blue/grey for window
+            ctx.fillRect(player.x + 10, player.y + 10, player.width - 20, player.height - 20);
+
+            // Wheels
+            ctx.fillStyle = '#1a1a1a'; // Black wheels
+            ctx.fillRect(player.x, player.y + 35, 10, 15); // Front left wheel
+            ctx.fillRect(player.x + player.width - 10, player.y + 35, 10, 15); // Front right wheel
+            ctx.fillRect(player.x, player.y + 10, 10, 15); // Rear left wheel
+            ctx.fillRect(player.x + player.width - 10, player.y + 10, 10, 15); // Rear right wheel
+            
+            // Headlights
+            ctx.fillStyle = '#f1c40f'; // Yellow headlights
+            ctx.fillRect(player.x + 5, player.y + 40, 5, 5);
+            ctx.fillRect(player.x + player.width - 10, player.y + 40, 5, 5);
+        }
+        
+        // Function to draw obstacles (Traffic Cones)
+        function drawObstacles() {
+            ctx.fillStyle = '#e67e22'; // Orange cone body
+            ctx.strokeStyle = '#2c3e50'; // Dark outline
+            
+            obstacles.forEach(obstacle => {
+                // Cone base
+                ctx.beginPath();
+                ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
+                ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
+                ctx.lineTo(obstacle.x + obstacle.width * 0.75, obstacle.y + obstacle.height * 0.25);
+                ctx.lineTo(obstacle.x + obstacle.width * 0.25, obstacle.y + obstacle.height * 0.25);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // White stripe
+                ctx.fillStyle = '#ecf0f1'; // White
+                ctx.fillRect(obstacle.x + obstacle.width * 0.2, obstacle.y + obstacle.height * 0.6, obstacle.width * 0.6, obstacle.height * 0.1);
+            });
+        }
+        
+        // Function to update game state
+        function update() {
+            if (isGameOver) return;
+            
+            // Move player
+            if (keys['ArrowLeft'] && player.x > 0) {
+                player.x -= player.speed;
+            }
+            if (keys['ArrowRight'] && player.x + player.width < canvas.width) {
+                player.x += player.speed;
+            }
+            
+            // Spawn new obstacles
+            const currentTime = Date.now();
+            if (currentTime - lastObstacleTime > obstacleSpawnInterval) {
+                const obstacleX = Math.random() * (canvas.width - 50);
+                obstacles.push({
+                    x: obstacleX,
+                    y: -50,
+                    width: 50,
+                    height: 50,
+                    speed: obstacleSpeed
+                });
+                lastObstacleTime = currentTime;
+            }
+
+            // Move and remove obstacles
+            obstacles.forEach((obstacle, index) => {
+                obstacle.y += obstacle.speed;
+                if (obstacle.y > canvas.height) {
+                    obstacles.splice(index, 1);
+                    score++;
+                }
+            });
+            
+            // Collision detection
+            obstacles.forEach(obstacle => {
+                if (player.x < obstacle.x + obstacle.width &&
+                    player.x + player.width > obstacle.x &&
+                    player.y < obstacle.y + obstacle.height &&
+                    player.y + player.height > obstacle.y) {
+                    gameOver();
+                }
+            });
+            
+            // Update score
+            scoreEl.textContent = score;
+            
+            // Increase speed based on score
+            obstacleSpeed = 3 + Math.floor(score / 20);
+        }
+        
+        // Game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw road lanes
+            ctx.fillStyle = '#f1c40f';
+            for (let i = -100 + (roadLaneY % 80); i < canvas.height; i += 80) {
+                ctx.fillRect(canvas.width / 2 - 5, i, 10, 40);
+            }
+            roadLaneY += obstacleSpeed;
+            
+            update();
+            drawPlayer();
+            drawObstacles();
+            
+            if (!isGameOver) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        // Game over function
+        function gameOver() {
+            isGameOver = true;
+            cancelAnimationFrame(animationFrameId);
+            messageText.textContent = `Game Over! Your score was ${score}.`;
+            messageBox.classList.remove('hidden');
+            restartGameBtn.classList.remove('hidden');
+            startGameBtn.classList.add('hidden');
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('drivingHighScore', highScore);
+                highScoreEl.textContent = highScore;
+            }
+        }
+
+        // Start game function
+        function startGame() {
+            score = 0;
+            obstacles = [];
+            isGameOver = false;
+            player.x = canvas.width / 2 - 25;
+            obstacleSpeed = 3;
+            scoreEl.textContent = 0;
+            messageBox.classList.add('hidden');
+            restartGameBtn.classList.add('hidden');
+            startGameBtn.classList.add('hidden');
+            gameLoop();
+        }
+
+        // Event listeners
+        startGameBtn.addEventListener('click', startGame);
+        restartGameBtn.addEventListener('click', startGame);
+
+    </script>
+</body>
+</html>
